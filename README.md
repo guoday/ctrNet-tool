@@ -38,17 +38,17 @@ features=['f'+str(i) for i in range(39)]
 
 ```python
 hparam=tf.contrib.training.HParams(
-            model='fm',
+            model='fm', #['fm']
             k=16,
             hash_ids=int(1e6),
             batch_size=64,
-            optimizer="adam",
+            optimizer="adam", #['adadelta','adagrad','sgd','adam','ftrl','gd','padagrad','pgd','rmsprop']
             learning_rate=0.0002,
             num_display_steps=100,
             num_eval_steps=1000,
             epoch=3,
-            metric='auc',
-            init_method='uniform',
+            metric='auc', #['auc','logloss']
+            init_method='uniform', #['tnormal','uniform','normal','xavier_normal','xavier_uniform','he_normal','he_uniform']
             init_value=0.1,
             feature_nums=len(features))
 utils.print_hparams(hparam)
