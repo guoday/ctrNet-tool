@@ -98,7 +98,7 @@ class Model(BaseModel):
         self.saver.restore(sess,'model_tmp/model')
         T=(time.time()-start_time)
         self.eval(T,dev_data,hparams,sess)
-        os.system("rm -r model_tmp/model")
+        os.system("rm -r model_tmp")
         
       
     def infer(self,dev_data):
