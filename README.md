@@ -65,7 +65,7 @@ model=ctrNet.build_model(hparam)
 ## Training model
 
 ```python
-#You can use control-c to stop training if the model doesn't improve, and then you can use this model to inference.
+#You can use control-c to stop training if the model doesn't improve.
 model.train(train_data=(train_df[features],train_df['label']),\
             dev_data=(dev_df[features],dev_df['label']))
 ```
