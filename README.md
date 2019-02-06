@@ -9,6 +9,7 @@ This's the tool for CTR, including FM, FFM, NFFM, XdeepFM and so on.
 # Requirements
 
 - python3
+- sklearn
 - TensorFlow>=1.4
 
 
