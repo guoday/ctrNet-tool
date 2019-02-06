@@ -2,7 +2,7 @@
 
 This's the tool for CTR, including FM, FFM, NFFM, XdeepFM and so on. 
 
-***Note: only implement FM, more detail and another models will be implemented***
+***Note: only implement FM and FFM, more detail and another models will be implemented***
 
 
 
@@ -38,9 +38,9 @@ features=['f'+str(i) for i in range(39)]
 
 ```python
 hparam=tf.contrib.training.HParams(
-            model='fm', #['fm']
+            model='ffm', #['fm','ffm']
             k=16,
-            hash_ids=int(1e6),
+            hash_ids=int(1e5),
             batch_size=64,
             optimizer="adam", #['adadelta','adagrad','sgd','adam','ftrl','gd','padagrad','pgd','rmsprop']
             learning_rate=0.0002,
