@@ -36,11 +36,13 @@ class Model(BaseModel):
         emb_inp_v1=tf.gather(self.emb_v1, self.features)
         w1=tf.reduce_sum(emb_inp_v1,[-1,-2])
         
+        
         emb_inp_v2=tf.gather(self.emb_v2, self.features)
+        emb_inp_v2=tf.reduce_sum(emb_inp_v2*tf.transpose(emb_inp_v2,[0,2,1,3]),-1)
         temp=[]
         for i in range(hparams.feature_nums):
-            for j in range(i+1,hparams.feature_nums):
-                temp.append(tf.reduce_sum(emb_inp_v2[:,i,j,:]*emb_inp_v2[:,j,i,:],-1)[:,None])
+            if i!=0:
+                temp.append(emb_inp_v2[:,i,:i])
         w2=tf.reduce_sum(tf.concat(temp,-1),-1)
         
         logit=w1+w2
