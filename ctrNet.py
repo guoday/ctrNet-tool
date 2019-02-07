@@ -1,6 +1,7 @@
 from src import misc_utils as utils
 from models import fm
 from models import ffm
+from models import nffm
 import tensorflow as tf
 from imp import reload
 def build_model(hparams):
@@ -9,6 +10,8 @@ def build_model(hparams):
         model=fm.Model(hparams)
     elif hparams.model=='ffm':
         model=ffm.Model(hparams)
+    elif hparams.model=='nffm':
+        model=nffm.Model(hparams)
     config_proto = tf.ConfigProto(log_device_placement=0,allow_soft_placement=0)
     config_proto.gpu_options.allow_growth = True
     sess=tf.Session(config=config_proto)
