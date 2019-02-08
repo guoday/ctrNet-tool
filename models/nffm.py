@@ -38,11 +38,11 @@ class Model(BaseModel):
         w1=tf.reduce_sum(emb_inp_v1,[-1,-2])
         
         emb_inp_v2=tf.gather(self.emb_v2, self.features)
-        emb_inp_v2=emb_inp_v2*tf.transpose(emb_inp_v2,[0,2,1,3])
+        emb_inp_v2=tf.reduce_sum(emb_inp_v2*tf.transpose(emb_inp_v2,[0,2,1,3]),-1)
         temp=[]
         for i in range(hparams.feature_nums):
             if i!=0:
-                temp.append(tf.reshape(emb_inp_v2[:,i,:i],[-1,i*hparams.k]))
+                temp.append(emb_inp_v2[:,i,:i])
         w2=tf.reduce_sum(tf.concat(temp,-1),-1)
         
         #DNN
