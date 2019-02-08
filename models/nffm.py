@@ -38,11 +38,11 @@ class Model(BaseModel):
         w1=tf.reduce_sum(emb_inp_v1,[-1,-2])
         
         emb_inp_v2=tf.gather(self.emb_v2, self.features)
-        emb_inp_v2=tf.reduce_sum(emb_inp_v2*tf.transpose(emb_inp_v2,[0,2,1,3]),-1)
+        emb_inp_v2=emb_inp_v2*tf.transpose(emb_inp_v2,[0,2,1,3])
         temp=[]
         for i in range(hparams.feature_nums):
             if i!=0:
-                temp.append(emb_inp_v2[:,i,:i])
+                temp.append(tf.reshape(emb_inp_v2[:,i,:i],[-1,i*hparams.k]))
         w2=tf.reduce_sum(tf.concat(temp,-1),-1)
         
         #DNN
@@ -64,7 +64,7 @@ class Model(BaseModel):
         w3=tf.tensordot(dnn_input,W,[[-1],[0]])+b 
         
         
-        logit=w1+w2+w3[:,0]
+        logit=w3[:,0]
         self.prob=tf.sigmoid(logit)
         logit_1=tf.log(self.prob+1e-20)
         logit_0=tf.log(1-self.prob+1e-20)
