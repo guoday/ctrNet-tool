@@ -2,7 +2,7 @@
 
 This's the tool for CTR, including FM, FFM, NFFM, XdeepFM and so on. 
 
-***Note: only implement FM and FFM, more detail and another models will be implemented***
+***Note: only implement FM, FFM and NFFM. More detail and another models will be implemented***
 
 
 
@@ -35,11 +35,11 @@ dev_df, test_df,_,_ = train_test_split(dev_df,dev_df,test_size=0.5, random_state
 features=['f'+str(i) for i in range(39)]
 ```
 
-##  Createing hparams
+##  Creating hparams
 
 ```python
 hparam=tf.contrib.training.HParams(
-            model='ffm', #['fm','ffm']
+            model='ffm', #['fm','ffm','nffm']
             k=16,
             hash_ids=int(1e5),
             batch_size=64,
@@ -82,4 +82,6 @@ print(auc)
 ```
 
 
-
+# Kernel for NFFM
+You can find kaggle kernel of NFFM in the following link: 
+https://www.kaggle.com/guoday/nffm-baseline-0-690-on-lb
