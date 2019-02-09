@@ -30,17 +30,28 @@ class Model(BaseModel):
         self.features=tf.placeholder(shape=(None,hparams.feature_nums), dtype=tf.int32)
         self.emb_v1=tf.get_variable(shape=[hparams.hash_ids,1],
                                     initializer=self.initializer,name='emb_v1')
-        self.emb_v2=tf.get_variable(shape=[hparams.hash_ids,hparams.k],
+        self.emb_v2=tf.get_variable(shape=[hparams.hash_ids,hparams.feature_nums,hparams.k],
                                     initializer=self.initializer,name='emb_v2')
         
         #lr
         emb_inp_v1=tf.gather(self.emb_v1, self.features)
-        lr_logits=tf.reduce_sum(emb_inp_v1,[-1,-2])
+        w1=tf.reduce_sum(emb_inp_v1,[-1,-2])
         
         emb_inp_v2=tf.gather(self.emb_v2, self.features)
+        x=[]
+        for i in range(hparams.feature_nums):
+            x.append(emb_inp_v2[:,i:i+1,i])
+        x=tf.concat(x,1)
+        
+        emb_inp_v2=tf.reduce_sum(emb_inp_v2*tf.transpose(emb_inp_v2,[0,2,1,3]),-1)
+        temp=[]
+        for i in range(hparams.feature_nums):
+            if i!=0:
+                temp.append(emb_inp_v2[:,i,:i])
+        w2=tf.reduce_sum(tf.concat(temp,-1),-1)
         
         #DNN
-        dnn_input=tf.reshape(emb_inp_v2,[-1,hparams.feature_nums*hparams.k])
+        dnn_input=tf.concat(temp,-1)
         input_size=int(dnn_input.shape[-1])
         for idx in range(len(hparams.hidden_size)):
             glorot = np.sqrt(2.0 / (input_size + hparams.hidden_size[idx]))
@@ -53,13 +64,13 @@ class Model(BaseModel):
             input_size=hparams.hidden_size[idx]
 
         glorot = np.sqrt(2.0 / (hparams.hidden_size[-1] + 1))
-        W = tf.Variable(np.random.normal(loc=0, scale=glorot, size=(hparams.hidden_size[-1], 1)), dtype=np.float32)     
-        dnn_logits=tf.tensordot(dnn_input,W,[[-1],[0]])[:,0]
+        W = tf.Variable(np.random.normal(loc=0, scale=glorot, size=(hparams.hidden_size[-1], 1)), dtype=np.float32)
+        b = tf.Variable(tf.constant(-3.5), dtype=np.float32)        
+        w3=tf.tensordot(dnn_input,W,[[-1],[0]])+b 
         
-        #exFM
-        exfm_logit=self._build_extreme_FM(hparams, emb_inp_v2, res=False, direct=False, bias=False, reduce_D=False, f_dim=2)[:,0]       
-
-        logit=lr_logits+dnn_logits+exfm_logit
+        exfm_logit=self._build_extreme_FM(hparams, x, res=False, direct=False, bias=False, reduce_D=False, f_dim=2)
+        
+        logit=w3[:,0]+exfm_logit[:,0]
         self.prob=tf.sigmoid(logit)
         logit_1=tf.log(self.prob+1e-20)
         logit_0=tf.log(1-self.prob+1e-20)
@@ -68,7 +79,7 @@ class Model(BaseModel):
         self.saver= tf.train.Saver()
         
     def _build_extreme_FM(self, hparams, nn_input, res=False, direct=False, bias=False, reduce_D=False, f_dim=2):
-        nn_input=self.batch_norm_layer(nn_input,self.use_norm,'efm_norm')
+        #nn_input=self.batch_norm_layer(nn_input,self.use_norm,'efm_norm')
         hidden_nn_layers = []
         field_nums = []
         final_len = 0
