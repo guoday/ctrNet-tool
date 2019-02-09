@@ -1,4 +1,4 @@
-# Introduction
+# 1.Introduction
 
 This's the tool for CTR, including FM, FFM, NFFM, XdeepFM and so on. 
 
@@ -6,15 +6,17 @@ This's the tool for CTR, including FM, FFM, NFFM, XdeepFM and so on.
 
 
 
-# Requirements
+# 2.Requirements
 
 - python3
 - sklearn
 - TensorFlow>=1.4
 
+# 3.Kernel for NFFM
+You can find kaggle kernel of NFFM in the following link: 
+https://www.kaggle.com/guoday/nffm-baseline-0-690-on-lb
 
-
-#  Quick Start
+#  4.Quick Start
 
 ## Loading dataset
 
@@ -82,6 +84,4 @@ print(auc)
 ```
 
 
-# Kernel for NFFM
-You can find kaggle kernel of NFFM in the following link: 
-https://www.kaggle.com/guoday/nffm-baseline-0-690-on-lb
+
