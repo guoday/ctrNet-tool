@@ -68,7 +68,7 @@ class Model(BaseModel):
         self.saver= tf.train.Saver()
         
     def _build_extreme_FM(self, hparams, nn_input, res=False, direct=False, bias=False, reduce_D=False, f_dim=2):
-        #nn_input=self.batch_norm_layer(nn_input,self.use_norm,'efm_norm')
+        nn_input=self.batch_norm_layer(nn_input,self.use_norm,'efm_norm')
         hidden_nn_layers = []
         field_nums = []
         final_len = 0
