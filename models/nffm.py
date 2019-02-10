@@ -39,14 +39,27 @@ class Model(BaseModel):
         
         emb_inp_v2=tf.gather(self.emb_v2, self.features)
         emb_inp_v2=tf.reduce_sum(emb_inp_v2*tf.transpose(emb_inp_v2,[0,2,1,3]),-1)
-        temp=[]
-        for i in range(hparams.feature_nums):
-            if i!=0:
-                temp.append(emb_inp_v2[:,i,:i])
-        w2=tf.reduce_sum(tf.concat(temp,-1),-1)
-        
+
+        # the for loop creates a copy of tensor emb_inp_v2 in each iteration
+        # which is memory intensive and not gpu-friendly
+
+        #temp=[]
+        #for i in range(hparams.feature_nums):
+        #    if i!=0:
+        #        temp.append(emb_inp_v2[:,i,:i])
+        #w2=tf.reduce_sum(tf.concat(temp,-1),-1)
         #DNN
-        dnn_input=tf.concat(temp,-1)
+        #dnn_input=tf.concat(temp,-1)
+
+        ones = tf.ones_like(emb_inp_v2)
+        mask_a = tf.matrix_band_part(ones, 0, -1) # Upper triangular matrix of 0s and 1s
+        mask_b = tf.matrix_band_part(ones, 0, 0)  # Diagonal matrix of 0s and 1s
+        mask = tf.cast(mask_a - mask_b, dtype=tf.bool) # Make a bool mask
+
+        #DNN
+        dnn_input = tf.boolean_mask(emb_inp_v2, mask)
+        dnn_input = tf.reshape(dnn_input,[tf.shape(emb_inp_v2)[0],hparams.feature_nums*(hparams.feature_nums-1)//2])
+
         input_size=int(dnn_input.shape[-1])
         for idx in range(len(hparams.hidden_size)):
             glorot = np.sqrt(2.0 / (input_size + hparams.hidden_size[idx]))
