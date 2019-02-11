@@ -24,33 +24,36 @@ class Model(BaseModel):
         self.sess=sess
         
     def build_graph(self, hparams):
-        self.initializer = self._get_initializer(hparams)
+        initializer = self._get_initializer(hparams)
         self.label = tf.placeholder(shape=(None), dtype=tf.float32)
         self.use_norm=tf.placeholder(tf.bool)
         self.features=tf.placeholder(shape=(None,hparams.feature_nums), dtype=tf.int32)
         self.emb_v1=tf.get_variable(shape=[hparams.hash_ids,1],
-                                    initializer=self.initializer,name='emb_v1')
+                                    initializer=initializer,name='emb_v1')
         self.emb_v2=tf.get_variable(shape=[hparams.hash_ids,hparams.feature_nums,hparams.k],
-                                    initializer=self.initializer,name='emb_v2')
-        self.emb_v3=tf.get_variable(shape=[hparams.hash_ids,hparams.k],
-                                    initializer=self.initializer,name='emb_v3')       
+                                    initializer=initializer,name='emb_v2')
+        
         #lr
         emb_inp_v1=tf.gather(self.emb_v1, self.features)
         w1=tf.reduce_sum(emb_inp_v1,[-1,-2])
         
         emb_inp_v2=tf.gather(self.emb_v2, self.features)
-        emb_inp_v3=tf.gather(self.emb_v3, self.features)
+        emb_inp_v2=emb_inp_v2*tf.transpose(emb_inp_v2,[0,2,1,3])
 
-        
-        emb_inp_v2=tf.reduce_sum(emb_inp_v2*tf.transpose(emb_inp_v2,[0,2,1,3]),-1)
-        temp=[]
-        for i in range(hparams.feature_nums):
-            if i!=0:
-                temp.append(emb_inp_v2[:,i,:i])
-        w2=tf.reduce_sum(tf.concat(temp,-1),-1)
-        
+
+
+        #CNN
+        dnn_input = tf.reshape(emb_inp_v2,[tf.shape(emb_inp_v2)[0],hparams.feature_nums*hparams.feature_nums,hparams.k])
+
+        dnn_input=tf.transpose(dnn_input,[0,2,1])
+        filters = tf.get_variable(name="filter",shape=[1,hparams.feature_nums*hparams.feature_nums, hparams.dim],dtype=tf.float32)
+        dnn_input = tf.nn.conv1d(dnn_input, filters=filters, stride=1, padding='VALID') 
+        dnn_input=tf.transpose(dnn_input,[0,2,1])
+        filters = tf.get_variable(name="filter_1",shape=[1,hparams.k, hparams.dim],dtype=tf.float32)
+        dnn_input = tf.nn.conv1d(dnn_input, filters=filters, stride=1, padding='VALID') 
+        dnn_input=tf.reshape(dnn_input,[-1,hparams.dim*hparams.dim])
+
         #DNN
-        dnn_input=tf.concat(temp,-1)
         input_size=int(dnn_input.shape[-1])
         for idx in range(len(hparams.hidden_size)):
             glorot = np.sqrt(2.0 / (input_size + hparams.hidden_size[idx]))
@@ -67,127 +70,15 @@ class Model(BaseModel):
         b = tf.Variable(tf.constant(-3.5), dtype=np.float32)        
         w3=tf.tensordot(dnn_input,W,[[-1],[0]])+b 
         
-        exfm_logit=self._build_extreme_FM(hparams, emb_inp_v3, res=False, direct=False, bias=False, reduce_D=False, f_dim=2)
         
-        logit=w3[:,0]+exfm_logit[:,0]
+        logit=w3[:,0]
         self.prob=tf.sigmoid(logit)
         logit_1=tf.log(self.prob+1e-20)
         logit_0=tf.log(1-self.prob+1e-20)
         self.loss=-tf.reduce_mean(self.label*logit_1+(1-self.label)*logit_0)
         self.cost=-(self.label*logit_1+(1-self.label)*logit_0)
         self.saver= tf.train.Saver()
-        
-    def _build_extreme_FM(self, hparams, nn_input, res=False, direct=False, bias=False, reduce_D=False, f_dim=2):
-        #nn_input=self.batch_norm_layer(nn_input,self.use_norm,'efm_norm')
-        hidden_nn_layers = []
-        field_nums = []
-        final_len = 0
-        field_num = hparams.feature_nums
-        nn_input = tf.reshape(nn_input, shape=[-1, int(field_num), hparams.k])
-        field_nums.append(int(field_num))
-        hidden_nn_layers.append(nn_input)
-        final_result = []
-        split_tensor0 = tf.split(hidden_nn_layers[0], hparams.k * [1], 2)
-        with tf.variable_scope("exfm_part", initializer=self.initializer) as scope:
-            for idx, layer_size in enumerate(hparams.cross_layer_sizes):
-                split_tensor = tf.split(hidden_nn_layers[-1], hparams.k * [1], 2)
-                dot_result_m = tf.matmul(split_tensor0, split_tensor, transpose_b=True)
-                dot_result_o = tf.reshape(dot_result_m, shape=[hparams.k, -1, field_nums[0]*field_nums[-1]])
-                dot_result = tf.transpose(dot_result_o, perm=[1, 0, 2])
-
-                if reduce_D:
-                    filters0 = tf.get_variable("f0_" + str(idx),
-                                               shape=[1, layer_size, field_nums[0], f_dim],
-                                               dtype=tf.float32)
-                    filters_ = tf.get_variable("f__" + str(idx),
-                                               shape=[1, layer_size, f_dim, field_nums[-1]],
-                                               dtype=tf.float32)
-                    filters_m = tf.matmul(filters0, filters_)
-                    filters_o = tf.reshape(filters_m, shape=[1, layer_size, field_nums[0] * field_nums[-1]])
-                    filters = tf.transpose(filters_o, perm=[0, 2, 1])
-                else:
-                    filters = tf.get_variable(name="f_"+str(idx),
-                                         shape=[1, field_nums[-1]*field_nums[0], layer_size],
-                                         dtype=tf.float32)
-                # dot_result = tf.transpose(dot_result, perm=[0, 2, 1])
-                curr_out = tf.nn.conv1d(dot_result, filters=filters, stride=1, padding='VALID')
-                
-                # BIAS ADD
-                if bias:
-                    b = tf.get_variable(name="f_b" + str(idx),
-                                    shape=[layer_size],
-                                    dtype=tf.float32,
-                                    initializer=tf.zeros_initializer())
-                    curr_out = tf.nn.bias_add(curr_out, b)
-
-                curr_out = self._activate(curr_out, hparams.cross_activation)
-                
-                curr_out = tf.transpose(curr_out, perm=[0, 2, 1])
-                
-                if direct:
-
-                    direct_connect = curr_out
-                    next_hidden = curr_out
-                    final_len += layer_size
-                    field_nums.append(int(layer_size))
-
-                else:
-                    if idx != len(hparams.cross_layer_sizes) - 1:
-                        next_hidden, direct_connect = tf.split(curr_out, 2 * [int(layer_size / 2)], 1)
-                        final_len += int(layer_size / 2)
-                    else:
-                        direct_connect = curr_out
-                        next_hidden = 0
-                        final_len += layer_size
-                    field_nums.append(int(layer_size / 2))
-
-                final_result.append(direct_connect)
-                hidden_nn_layers.append(next_hidden)
-
-
-            result = tf.concat(final_result, axis=1)
             
-            result = tf.reduce_sum(result, -1)
-            if res:
-                w_nn_output1 = tf.get_variable(name='w_nn_output1',
-                                               shape=[final_len, 128],
-                                               dtype=tf.float32)
-                b_nn_output1 = tf.get_variable(name='b_nn_output1',
-                                               shape=[128],
-                                               dtype=tf.float32,
-                                               initializer=tf.zeros_initializer())
-                self.layer_params.append(w_nn_output1)
-                self.layer_params.append(b_nn_output1)
-                exFM_out0 = tf.nn.xw_plus_b(result, w_nn_output1, b_nn_output1)
-                exFM_out1 = self._active_layer(logit=exFM_out0,
-                                               scope=scope,
-                                               activation="relu",
-                                               layer_idx=0)
-                w_nn_output2 = tf.get_variable(name='w_nn_output2',
-                                               shape=[128 + final_len, 1],
-                                               dtype=tf.float32)
-                b_nn_output2 = tf.get_variable(name='b_nn_output2',
-                                               shape=[1],
-                                               dtype=tf.float32,
-                                               initializer=tf.zeros_initializer())
-                self.layer_params.append(w_nn_output2)
-                self.layer_params.append(b_nn_output2)
-                exFM_in = tf.concat([exFM_out1, result], axis=1, name="user_emb")
-                exFM_out = tf.nn.xw_plus_b(exFM_in, w_nn_output2, b_nn_output2)
-
-            else:
-                w_nn_output = tf.get_variable(name='w_nn_output',
-                                              shape=[final_len, 1],
-                                              dtype=tf.float32)
-                b_nn_output = tf.get_variable(name='b_nn_output',
-                                              shape=[1],
-                                              dtype=tf.float32,
-                                              initializer=tf.zeros_initializer())
-                exFM_out = tf.nn.xw_plus_b(result, w_nn_output, b_nn_output)
-
-            return exFM_out
-        
- 
     def optimizer(self,hparams):
         opt=self._build_train_opt(hparams)
         params = tf.trainable_variables()
