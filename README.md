@@ -21,7 +21,6 @@ https://www.kaggle.com/guoday/nffm-baseline-0-690-on-lb
 ## Loading dataset
 
 ```python
-import ctrNet
 import pandas as pd
 import numpy as np
 import tensorflow as tf
