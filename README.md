@@ -25,7 +25,6 @@ import pandas as pd
 import numpy as np
 import tensorflow as tf
 import ctrNet
-from src import hparams
 from sklearn.model_selection import train_test_split
 from src import misc_utils as utils
 import os
