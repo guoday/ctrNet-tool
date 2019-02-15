@@ -144,6 +144,8 @@ class Model(BaseModel):
         for idx in range(len(dev_data[0])//hparams.batch_size+1):
             batch=dev_data[0][idx*hparams.batch_size:\
                               min((idx+1)*hparams.batch_size,len(dev_data[0]))]
+            if len(batch)==0:
+                break
             batch=utils.hash_batch(batch,hparams)
             label=dev_data[1][idx*hparams.batch_size:\
                               min((idx+1)*hparams.batch_size,len(dev_data[1]))]
