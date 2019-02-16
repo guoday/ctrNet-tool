@@ -71,7 +71,7 @@ class Model(BaseModel):
             info['norm']=[]
             start_time = time.time()
             for idx in range(len(train_data[0])//hparams.batch_size+3):
-                if idx*hparams.batch_size>=len(train_data[0]):
+                if idx*hparams.batch_size>=len(train_data[0]) or ('steps' in hparams and hparams.steps==idx):
                     T=(time.time()-start_time)
                     self.eval(T,dev_data,hparams,sess)
                     break
