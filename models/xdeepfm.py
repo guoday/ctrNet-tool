@@ -38,7 +38,7 @@ class Model(BaseModel):
         lr_logits=tf.reduce_sum(emb_inp_v1,[-1,-2])
         
         emb_inp_v2=tf.gather(self.emb_v2, self.features)
-        
+        self.emb_inp_v2=emb_inp_v2
         #DNN
         dnn_input=tf.reshape(emb_inp_v2,[-1,hparams.feature_nums*hparams.k])
         input_size=int(dnn_input.shape[-1])
@@ -246,4 +246,23 @@ class Model(BaseModel):
             preds.append(pred)   
         preds=np.concatenate(preds)
         return preds
+     def get_embedding(self,dev_data):
+        hparams=self.hparams
+        sess=self.sess
+        assert len(dev_data[0])==len(dev_data[1]), "Size of features data must be equal to label"       
+        embedding=[]
+        total_loss=[]
+        for idx in range(len(dev_data[0])//hparams.batch_size+1):
+            batch=dev_data[0][idx*hparams.batch_size:\
+                              min((idx+1)*hparams.batch_size,len(dev_data[0]))]
+            if len(batch)==0:
+                break
+            batch=utils.hash_batch(batch,hparams)
+            label=dev_data[1][idx*hparams.batch_size:\
+                              min((idx+1)*hparams.batch_size,len(dev_data[1]))]
+            temp=sess.run(self.emb_inp_v2,\
+                          feed_dict={self.features:batch,self.label:label})  
+            embedding.append(temp)   
+        embedding=np.concatenate(embedding,0)
+        return embedding
             
