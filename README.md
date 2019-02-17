@@ -10,7 +10,7 @@ This's the tool for CTR, including FM, FFM, NFFM, XdeepFM and so on.
 
 - python3
 - sklearn
-- TensorFlow>=1.4
+- TensorFlow>=1.6
 
 # 3.Kernel for NFFM
 You can find kaggle kernel of NFFM in the following link: 
