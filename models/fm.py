@@ -38,12 +38,20 @@ class Model(BaseModel):
         
         #FM
         emb_inp_v2=tf.gather(self.emb_v2, self.features)
+        self.emb_inp_v2=emb_inp_v2
         emb_inp_v2=tf.reduce_sum(emb_inp_v2[:,:,None,:]*emb_inp_v2[:,None,:,:],-1)
-        temp=[]
-        for i in range(hparams.feature_nums):
-            if i!=0:
-                temp.append(emb_inp_v2[:,i,:i])
-        w2=tf.reduce_sum(tf.concat(temp,-1),-1)
+        
+        
+        ones = tf.ones_like(emb_inp_v2)
+        mask_a = tf.matrix_band_part(ones, 0, -1) # Upper triangular matrix of 0s and 1s
+        mask_b = tf.matrix_band_part(ones, 0, 0)  # Diagonal matrix of 0s and 1s
+        mask = tf.cast(mask_a - mask_b, dtype=tf.bool) # Make a bool mask
+
+        #DNN
+        mask_input = tf.boolean_mask(emb_inp_v2, mask)
+        mask_input = tf.reshape(mask_input,[tf.shape(emb_inp_v2)[0],hparams.feature_nums*(hparams.feature_nums-1)//2])
+        
+        w2=tf.reduce_sum(mask_input,-1)
         
         
         logit=w1+w2
@@ -124,4 +132,24 @@ class Model(BaseModel):
             preds.append(pred)   
         preds=np.concatenate(preds)
         return preds
+    
+    def get_embedding(self,dev_data):
+        hparams=self.hparams
+        sess=self.sess
+        assert len(dev_data[0])==len(dev_data[1]), "Size of features data must be equal to label"       
+        embedding=[]
+        total_loss=[]
+        for idx in range(len(dev_data[0])//hparams.batch_size+1):
+            batch=dev_data[0][idx*hparams.batch_size:\
+                              min((idx+1)*hparams.batch_size,len(dev_data[0]))]
+            if len(batch)==0:
+                break
+            batch=utils.hash_batch(batch,hparams)
+            label=dev_data[1][idx*hparams.batch_size:\
+                              min((idx+1)*hparams.batch_size,len(dev_data[1]))]
+            temp=sess.run(self.emb_inp_v2,\
+                          feed_dict={self.features:batch,self.label:label})  
+            embedding.append(temp)   
+        embedding=np.concatenate(embedding,0)
+        return embedding
             
