@@ -246,7 +246,7 @@ class Model(BaseModel):
             preds.append(pred)   
         preds=np.concatenate(preds)
         return preds
-     def get_embedding(self,dev_data):
+    def get_embedding(self,dev_data):
         hparams=self.hparams
         sess=self.sess
         assert len(dev_data[0])==len(dev_data[1]), "Size of features data must be equal to label"       
