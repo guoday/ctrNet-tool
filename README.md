@@ -13,10 +13,14 @@ This's the tool for CTR, including FM, FFM, NFFM, XdeepFM and so on.
 - TensorFlow>=1.6
 
 # 3.Kernel for NFFM
-You can find kaggle kernel of NFFM in the following link: 
+You can find kaggle kernel for NFFM in the following link: 
 https://www.kaggle.com/guoday/nffm-baseline-0-690-on-lb
 
-#  4.Quick Start
+# 4.Kernel for Xdeepfm
+You can find kaggle kernel of Xdeepfm in the following link: 
+https://www.kaggle.com/guoday/xdeepfm-baseline
+
+#  5.Quick Start
 
 ## Loading dataset
 
