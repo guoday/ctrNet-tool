@@ -13,69 +13,12 @@ __all__ = ["BaseModel"]
 class BaseModel(object):
     def __init__(self, hparams,  scope=None):
         tf.set_random_seed(1234)
-        self.iterator = iterator
-        self.layer_params = []
-        self.embed_params = []
-        self.cross_params = []
-        self.layer_keeps = None
-        self.keep_prob_train = None
-        self.keep_prob_test = None
-        self.initializer = self._get_initializer(hparams)
-        self.logit = self._build_graph(hparams)
-        self.pred = self._get_pred(self.logit, hparams)
-        self.data_loss = self._compute_data_loss(hparams)
-        self.regular_loss = self._compute_regular_loss(hparams)
-        self.loss = tf.add(self.data_loss, self.regular_loss)
-        self.saver = tf.train.Saver(max_to_keep=hparams.epochs)
-        self.update = self._build_train_opt(hparams)
-        self.init_op = tf.global_variables_initializer()
-        self.merged = self._add_summaries()
-
-    def _get_pred(self, logit, hparams):
-        if hparams.method == 'regression':
-            pred = tf.identity(logit)
-        elif hparams.method == 'classification':
-            pred = tf.sigmoid(logit)
-        else:
-            raise ValueError("method must be regression or classification, but now is {0}".format(hparams.method))
-        return pred
-
-    def _add_summaries(self):
-        tf.summary.scalar("data_loss", self.data_loss)
-        tf.summary.scalar("regular_loss", self.regular_loss)
-        tf.summary.scalar("loss", self.loss)
-        merged = tf.summary.merge_all()
-        return merged
-
+        
     @abc.abstractmethod
     def _build_graph(self, hparams):
         """Subclass must implement this."""
         pass
 
-    def _l2_loss(self, hparams):
-        l2_loss = tf.zeros([1], dtype=tf.float32)
-        # embedding_layer l2 loss
-        for param in self.embed_params:
-            l2_loss = tf.add(l2_loss, tf.multiply(hparams.l2, tf.nn.l2_loss(param)))
-
-        return l2_loss
-
-    def _l1_loss(self, hparams):
-        l1_loss = tf.zeros([1], dtype=tf.float32)
-        # embedding_layer l2 loss
-        for param in self.embed_params:
-            l1_loss = tf.add(l1_loss, tf.multiply(hparams.embed_l1, tf.norm(param, ord=1)))
-        params = self.layer_params
-        for param in params:
-            l1_loss = tf.add(l1_loss, tf.multiply(hparams.layer_l1, tf.norm(param, ord=1)))
-        return l1_loss
-
-    def _cross_l_loss(self, hparams):
-        cross_l_loss = tf.zeros([1], dtype=tf.float32)
-        for param in self.cross_params:
-            cross_l_loss = tf.add(cross_l_loss, tf.multiply(hparams.cross_l1, tf.norm(param, ord=1)))
-            cross_l_loss = tf.add(cross_l_loss, tf.multiply(hparams.cross_l2, tf.norm(param, ord=1)))
-        return cross_l_loss 
 
     def _get_initializer(self, hparams):
         if hparams.init_method == 'tnormal':
@@ -97,25 +40,6 @@ class BaseModel(object):
         else:
             return tf.truncated_normal_initializer(stddev=hparams.init_value)
 
-    def _compute_data_loss(self, hparams):
-        if hparams.loss == 'cross_entropy_loss':
-            data_loss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits( \
-                logits=tf.reshape(self.logit, [-1]), \
-                labels=tf.reshape(self.iterator.labels, [-1])))
-        elif hparams.loss == 'square_loss':
-            data_loss = tf.sqrt(tf.reduce_mean(
-                tf.squared_difference(tf.reshape(self.pred, [-1]), tf.reshape(self.iterator.labels, [-1]))))
-        elif hparams.loss == 'log_loss':
-            data_loss = tf.reduce_mean(tf.losses.log_loss(predictions=tf.reshape(self.pred, [-1]),
-                                                          labels=tf.reshape(self.iterator.labels, [-1])))
-        else:
-            raise ValueError("this loss not defined {0}".format(hparams.loss))
-        return data_loss
-
-    def _compute_regular_loss(self, hparams):
-        regular_loss = self._l2_loss(hparams) + self._l1_loss(hparams) + self._cross_l_loss(hparams)
-        regular_loss = tf.reduce_sum(regular_loss)
-        return regular_loss
 
     def _build_train_opt(self, hparams):
         def train_opt(hparams):
